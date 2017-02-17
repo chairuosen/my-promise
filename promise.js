@@ -1,15 +1,12 @@
 function Promise(gen) {
     var _this = this;
-    this.queue = [];
+    this.status = 'pending';
+    this._queue = [];
+    this._lastResult = null;
+    this._gen = gen;
     setTimeout(function () {
-        try{
-            gen(function resolve(data) {
-                _this._start(true,data);
-            },function reject(data) {
-                _this._start(false,data);
-            });
-        }catch(e){
-            _this._start(false,data);
+        if(_this.status == 'pending'){
+            _this._run();
         }
     },0)
 }
@@ -19,50 +16,107 @@ function isPromise(obj) {
     if(obj.then && typeof obj.then == 'function') return true;
     return false;
 }
+function clone(p) {
+    var p1 = new Promise();
+    p1._queue = p._queue.concat([]);
+    p1._lastResult = p._lastResult;
+    p1._gen = p._gen;
+    p.status = 'done';
+    return p1;
+}
 
 Promise.prototype = {
     then:function (callback,failback) {
-        this.queue.push({
+        var _this = clone(this);
+        _this._queue.push({
             callback:callback,
             failback:failback
         });
-        return this;
+        return _this;
     },
     catch:function (failback) {
         return this.then(null,failback);
     },
-    _start:function (prevActionSucc,resData) {
+    _saveResult:function (status,data) {
+        this._lastResult = {
+            status:status,
+            data:data
+        };
+    },
+    _run:function () {
         var _this = this;
-        function next(prevActionSucc,resData) {
-            var item = _this.queue.shift();
-            if(!item) {
-                if(prevActionSucc){
-                    return;
-                }else{
-                    throw resData;
-                }
-            }
-            var action = prevActionSucc ? item.callback : item.failback;
-            if(!action){
-                next(prevActionSucc,resData);
+        var count = 0;
+        function next() {
+            count ++ ;
+            if(count>100){
+                throw '111111';
                 return;
             }
-            try{
-                var res = action(resData);
-                if(isPromise(res)){
-                    res.then(function (data) {
-                        next(true,data);
-                    },function (err) {
-                        next(false,err);
-                    })
-                }else{
-                    next(true,res);
-                }
-            }catch(e){
-                next(false,e);
-            }
+            _this._next(next)
         }
-        next(prevActionSucc,resData);
+        next();
+    },
+    _next:function (callback) {
+        var _this = this;
+        if(this._gen){
+            var gen = this._gen;
+            this._gen = null;
+            try{
+                gen(function(data) {
+                    _this._saveResult(true,data);
+                    callback();
+                },function(err) {
+                    _this._saveResult(false,err);
+                    callback();
+                });
+            }catch(e){
+                _this._saveResult(false,e);
+                callback();
+            }
+
+            return;
+        }
+
+        var item = this._queue.shift();
+        var prevActionSucc,resData;
+        if(this._lastResult){
+            prevActionSucc = this._lastResult.status;
+            resData = this._lastResult.data;
+        }else{
+            prevActionSucc = true;
+            resData = undefined;
+        }
+        if(!item) {
+            this.status = 'done';
+            if(!prevActionSucc){
+                console && console.error(resData);
+            }
+            return;
+        }
+        var action = prevActionSucc ? item.callback : item.failback;
+        if(!action){
+            this._saveResult(prevActionSucc,resData);
+            callback();
+            return;
+        }
+        try{
+            var res = action(resData);
+            if(isPromise(res)){
+                res.then(function (data) {
+                    _this._saveResult(true,data);
+                    callback();
+                },function (err) {
+                    _this._saveResult(false,err);
+                    callback();
+                })
+            }else{
+                this._saveResult(true,res);
+                callback();
+            }
+        }catch(e){
+            this._saveResult(false,e);
+            callback();
+        }
     }
 };
 

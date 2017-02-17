@@ -25,7 +25,7 @@ function test(Promise) {
         })
     }
 
-    function start() {
+    function case1() {
         (new Promise(function (resolve,reject) {
             resolve(1);
         })).then(function (data) {
@@ -52,8 +52,26 @@ function test(Promise) {
         });
     }
 
-    start();
-}
+    function case2() {
+        var a = new Promise(function (resolve,reject) {
+            reject('err');
+        })
+        setTimeout(function () {
+            a.then(function (data) {
+                console.log(data);
+            },function (err) {
+                console.log(err);
+            })
+            a.then(function (data) {
+                console.log(data);
+            },function (err) {
+                console.log(err);
+            })
+        },10);
+    }
 
+    case1();
+    // case2();
+}
 // test(Promise);
 test(MyPromise);
