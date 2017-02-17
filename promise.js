@@ -16,6 +16,7 @@ function Promise(gen) {
 }
 
 function isPromise(obj) {
+    if(!obj)return false;
     if(obj._isPromise)return true;
     if(obj.then && obj.catch) return true;
     return false;
@@ -53,7 +54,7 @@ Promise.prototype = {
             }
             try{
                 var res = action(resData);
-                if(res && isPromise(res)){
+                if(isPromise(res)){
                     res.then(function (data) {
                         next(true,data);
                     },function (err) {
