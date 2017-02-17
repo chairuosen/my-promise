@@ -1,6 +1,5 @@
 function Promise(gen) {
     var _this = this;
-    this._isPromise = true;
     this.queue = [];
     setTimeout(function () {
         try{
@@ -17,8 +16,7 @@ function Promise(gen) {
 
 function isPromise(obj) {
     if(!obj)return false;
-    if(obj._isPromise)return true;
-    if(obj.then && obj.catch) return true;
+    if(obj.then && typeof obj.then == 'function') return true;
     return false;
 }
 
@@ -31,10 +29,7 @@ Promise.prototype = {
         return this;
     },
     catch:function (failback) {
-        this.queue.push({
-            failback:failback
-        });
-        return this;
+        return this.then(null,failback);
     },
     _start:function (prevActionSucc,resData) {
         var _this = this;
