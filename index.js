@@ -47,8 +47,8 @@ function test(Promise) {
             return asyncReject();
         }).then(function () {
             console.log('shouldnt be here');
-        },function (err) {
-            console.log(err);
+        }).catch(function (err) {
+            console.log('Error Catch: '+err);
         });
     }
 

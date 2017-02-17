@@ -2,20 +2,15 @@ function Promise(gen) {
     var _this = this;
     this._isPromise = true;
     this.queue = [];
-    this.lastSuccData = undefined;
-    this.lastFailData = undefined;
     setTimeout(function () {
         try{
             gen(function resolve(data) {
-                _this.lastSuccData = data;
-                _this._start(true);
+                _this._start(true,data);
             },function reject(data) {
-                _this.lastFailData = data;
-                _this._start(false);
+                _this._start(false,data);
             });
         }catch(e){
-            _this.lastFailData = data;
-            _this._start(false);
+            _this._start(false,data);
         }
     },0)
 }
@@ -40,38 +35,38 @@ Promise.prototype = {
         });
         return this;
     },
-    _start:function (prevActionSucc) {
+    _start:function (prevActionSucc,resData) {
         var _this = this;
-        function next(prevActionSucc) {
+        function next(prevActionSucc,resData) {
             var item = _this.queue.shift();
-            if(!item) return;
+            if(!item) {
+                if(prevActionSucc){
+                    return;
+                }else{
+                    throw resData;
+                }
+            }
             var action = prevActionSucc ? item.callback : item.failback;
-            var lastData = prevActionSucc ? _this.lastSuccData : _this.lastFailData;
-
+            if(!action){
+                next(prevActionSucc,resData);
+                return;
+            }
             try{
-                var res = action(lastData);
+                var res = action(resData);
                 if(res && isPromise(res)){
                     res.then(function (data) {
-                        _this.lastSuccData = data;
-                        _this.lastFailData = undefined;
-                        next(true);
+                        next(true,data);
                     },function (err) {
-                        _this.lastSuccData = undefined;
-                        _this.lastFailData = err;
-                        next(false);
+                        next(false,err);
                     })
                 }else{
-                    _this.lastSuccData = res;
-                    _this.lastFailData = undefined;
-                    next(true);
+                    next(true,res);
                 }
             }catch(e){
-                _this.lastSuccData = undefined;
-                _this.lastFailData = e;
-                next(false);
+                next(false,e);
             }
         }
-        next(prevActionSucc);
+        next(prevActionSucc,resData);
     }
 };
 
