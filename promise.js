@@ -48,8 +48,8 @@ Promise.prototype = {
         var count = 0;
         function next() {
             count ++ ;
-            if(count>100){
-                throw '111111';
+            if(count>1000){
+                throw 'Max depth 1000';
                 return;
             }
             _this._next(next)
